@@ -1,9 +1,9 @@
-"""Airflow-facing normalization tasks.
+"""Задачи нормализации для Airflow.
 
-DataFrames never travel through XCom: each mapped task normalizes one bronze
-file into staging parquet under STAGING_PATH and returns a small dict with the
-staging path; a single publisher task loads all staging files, dedups and
-publishes to Silver in one DuckDB connection (single-writer rule).
+DataFrame через XCom не передаются: каждая mapped-задача нормализует один
+bronze-файл в staging-parquet под STAGING_PATH и возвращает компактный словарь
+с путём; одна задача-издатель загружает все staging-файлы, дедуплицирует и
+публикует в Silver через одно соединение DuckDB (правило единственного писателя).
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ def _env(name: str, default: str) -> str:
 
 
 def discover_unprocessed_partitions() -> list[str]:
-    """Bronze message files not yet in bronze_processed_files."""
+    """Файлы сообщений Bronze, отсутствующие в bronze_processed_files."""
     import duckdb
 
     from ingestion.bronze import discover_bronze_files
@@ -40,7 +40,7 @@ def discover_unprocessed_partitions() -> list[str]:
 
 
 def normalize_partition(file_path: str) -> dict:
-    """Normalize one bronze file into staging parquet; return small descriptor."""
+    """Нормализовать один bronze-файл в staging-parquet; вернуть компактный дескриптор."""
     import polars as pl
 
     from ingestion.bronze import read_bronze_partition
@@ -71,7 +71,7 @@ def normalize_partition(file_path: str) -> dict:
 
 
 def publish_silver(descriptors: list[dict]) -> dict:
-    """Single-writer publication of normalized data + processed-file records."""
+    """Публикация нормализованных данных и учёта файлов одним писателем."""
     import duckdb
     import polars as pl
 

@@ -1,1 +1,1 @@
-"""Warehouse (DuckDB) schema, keys and publication primitives."""
+"""Склад (DuckDB): схема, ключи и примитивы публикации."""

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Backup: warehouse (DuckDB consistent snapshot) + Superset metadata (pg_dump).
-# Runs inside the airflow-scheduler container. Backups: /opt/airflow/data/backups.
+# Бэкап: согласованный снапшот warehouse (DuckDB) + метаданные Superset (pg_dump).
+# Выполняется внутри контейнера airflow-scheduler. Бэкапы: /opt/airflow/data/backups.
 set -euo pipefail
 
 TS=$(date +%Y%m%d-%H%M%S)
@@ -28,7 +28,7 @@ for (name,) in conn.execute(
 conn.execute("COMMIT")
 conn.execute("DETACH src_main")
 conn.close()
-print("warehouse snapshot written:", dst)
+print("снапшот склада записан:", dst)
 EOF
 
 # --- 2. Superset metadata: pg_dump (контейнер postgres доступен по сети tdp-net) ---
@@ -43,7 +43,7 @@ EOF
 )
 PGPASSWORD="$PGPASSWORD" pg_dump \
     -h postgres -U airflow -d superset > "$BACKUP_ROOT/$TS/superset_meta.sql"
-echo "superset metadata dump written: $(wc -l < "$BACKUP_ROOT/$TS/superset_meta.sql") lines"
+echo "дамп метаданных Superset записан: $(wc -l < "$BACKUP_ROOT/$TS/superset_meta.sql") строк"
 
 # --- 3. Проверка восстановления (spec: копия проверяется восстановлением) ---
 python - "$BACKUP_ROOT/$TS/telegram.duckdb" <<'EOF'
@@ -60,8 +60,8 @@ marts = conn.execute(
     "SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'mart%'"
 ).fetchone()[0]
 conn.close()
-assert tables >= 4 and msgs >= 1, "backup verification failed"
-print(f"restore check OK: {tables} tables, messages={msgs}, marts={marts}")
+assert tables >= 4 and msgs >= 1, "проверка бэкапа не пройдена"
+print(f"проверка восстановления OK: таблиц={tables}, messages={msgs}, витрин={marts}")
 EOF
 
 echo "BACKUP_DIR=$BACKUP_ROOT/$TS"

@@ -1,5 +1,5 @@
-"""Data Quality layer on Great Expectations (spec §7).
+"""Слой качества данных на Great Expectations (спецификация, §7).
 
-Severity levels: FAIL blocks downstream (critical), WARN is recorded but
-does not fail the run. History is kept in DuckDB table quality_results.
+Уровни: FAIL блокирует downstream (критично), WARN записывается, но не роняет
+запуск. История хранится в таблице quality_results в DuckDB.
 """

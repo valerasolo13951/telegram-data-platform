@@ -1,4 +1,4 @@
-"""End-to-end check: query a mart through Superset's chart-data API."""
+"""Сквозная проверка: запрос витрины через chart-data API Superset."""
 import json
 import os
 import urllib.request

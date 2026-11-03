@@ -1,4 +1,4 @@
-"""Airflow-facing quality tasks: validate Silver tables + latest Bronze files."""
+"""Задачи качества для Airflow: проверки таблиц Silver + свежих файлов Bronze."""
 from __future__ import annotations
 
 import os
@@ -19,7 +19,7 @@ def _load_table(conn, table: str):
 
 
 def run_quality_task() -> dict:
-    """Validate Bronze (recent files) and Silver tables; FAIL raises."""
+    """Проверить Bronze (свежие файлы) и таблицы Silver; при FAIL — исключение."""
     import duckdb
 
     from ingestion.bronze import discover_bronze_files, read_bronze_partition
@@ -73,11 +73,11 @@ def run_quality_task() -> dict:
         conn.close()
 
     total_fail = sum(s["fail"] for s in summaries)
-    print(f"quality summary: {summaries}")
+    print(f"сводка качества: {summaries}")
     if total_fail:
         raise RuntimeError(
-            f"quality gates failed: {total_fail} critical check(s) FAIL; "
-            "see quality_results table"
+            f"качество не пройдено: {total_fail} критических проверок FAIL; "
+            "подробности в таблице quality_results"
         )
     return {"suites": summaries, "fail": total_fail}
 

@@ -1,4 +1,4 @@
-"""Phase 3 tests: collector parsing, bronze writer, collection state."""
+"""Тесты Phase 3: парсинг collector, запись Bronze, состояние сбора."""
 from __future__ import annotations
 
 import sys

@@ -1,1 +1,1 @@
-"""Gold marts: analytical views over Silver (spec §8)."""
+"""Витрины Gold: аналитические представления над Silver (спецификация, §8)."""

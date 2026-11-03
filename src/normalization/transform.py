@@ -1,7 +1,8 @@
-"""Transform Bronze rows into Silver frames (channels, messages, message_links).
+"""Преобразование строк Bronze в кадры Silver (channels, messages, message_links).
 
-Deduplication: bronze may contain the same message in several files (overlap,
-re-runs). The row with the latest collected_at wins for each message_key.
+Дедупликация: в Bronze одно сообщение может попадать в несколько файлов
+(перекрытие, повторные запуски). Для каждого message_key побеждает строка
+с самой поздней датой сбора.
 """
 from __future__ import annotations
 
@@ -24,10 +25,9 @@ def now_utc() -> datetime:
 
 
 def dedup_messages(df: pl.DataFrame) -> pl.DataFrame:
-    """Keep one row per message_key — the one with the latest collection.
+    """Оставить одну строку на message_key — с самой поздней коллекцией.
 
-    Input is a silver-schema frame (bronze files already collapsed via
-    last_collected_at); latest edit wins.
+    Вход — кадр silver-схемы; побеждает последняя версия (правка) сообщения.
     """
     if df.is_empty():
         return df
@@ -37,7 +37,7 @@ def dedup_messages(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def build_messages(bronze_df: pl.DataFrame) -> pl.DataFrame:
-    """Bronze posts → silver `messages` rows (schema of publisher.MESSAGE_COLUMNS)."""
+    """Посты Bronze → строки silver `messages` (схема publisher.MESSAGE_COLUMNS)."""
     now = now_utc()
     df = bronze_df.with_columns(
         pl.struct(["username", "message_id"])
@@ -72,7 +72,7 @@ def build_messages(bronze_df: pl.DataFrame) -> pl.DataFrame:
 
 
 def build_links(bronze_df: pl.DataFrame) -> pl.DataFrame:
-    """Extract link occurrences from message text with positions."""
+    """Извлечь вхождения ссылок из текста сообщения с позициями."""
     now = now_utc()
     rows: list[dict] = []
     for row in bronze_df.iter_rows(named=True):
@@ -112,7 +112,7 @@ LINKS_SCHEMA = {
 
 
 def build_channels(channel_info_files: list[Path]) -> pl.DataFrame:
-    """Latest channel info per channel → silver `channels` rows."""
+    """Последние метаданные канала → строки silver `channels`."""
     now = now_utc()
     frames = [pl.read_parquet(f) for f in channel_info_files if f.exists()]
     if not frames:

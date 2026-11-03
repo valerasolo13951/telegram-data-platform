@@ -1,7 +1,7 @@
-"""URL extraction and classification from message text.
+"""Извлечение и классификация URL из текста сообщения.
 
-Positions are Unicode code point indices into the original string
-(spec: message_links). Query parameters are never dropped.
+Позиции — индексы в Unicode code points исходной строки
+(спецификация: message_links). Query-параметры не удаляются.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ class ExtractedLink:
 
 
 def normalize_url(raw: str) -> str:
-    """Lowercase scheme/host, keep path/query/fragment as-is."""
+    """Привести scheme/host к нижнему регистру, path/query/fragment не трогать."""
     s = urlsplit(raw.strip())
     scheme = s.scheme.lower() or ("https" if raw.lower().startswith("www.") else "")
     netloc = s.netloc.lower()
@@ -37,7 +37,7 @@ def normalize_url(raw: str) -> str:
 
 
 def classify_url(raw: str) -> tuple[str, str]:
-    """Return (normalized_url, link_type) for a raw URL."""
+    """Вернуть (normalized_url, link_type) для исходного URL."""
     normalized = normalize_url(raw)
     s = urlsplit(normalized)
     host = (s.hostname or "").lower().removeprefix("www.")
@@ -58,10 +58,10 @@ def domain_of(raw: str) -> str:
 
 
 def extract_links(text: str | None) -> list[ExtractedLink]:
-    """Extract all link occurrences with code point positions.
+    """Извлечь все вхождения ссылок с позициями в code points.
 
-    All occurrences are kept, including repeated URLs. Trailing punctuation
-    is stripped conservatively (only unbalanced closing brackets/quotes).
+    Сохраняются все вхождения, включая повторные URL. Конечная пунктуация
+    срезается консервативно (только небалансные закрывающие скобки/кавычки).
     """
     if not text:
         return []

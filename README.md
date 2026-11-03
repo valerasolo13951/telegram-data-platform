@@ -3,141 +3,143 @@
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
 [![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.10-017CEE?logo=apacheairflow)](https://airflow.apache.org/)
 [![DuckDB](https://img.shields.io/badge/warehouse-DuckDB-FFF100?logo=duckdb)](https://duckdb.org/)
-[![tests](https://img.shields.io/badge/tests-45%20passed-brightgreen)](.github/workflows/tests.yml)
+[![tests](https://img.shields.io/badge/тесты-45%20passed-brightgreen)](.github/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-End-to-end batch data platform for collecting, modeling and serving Telegram
-channel content:
+Сквозная пакетная data-платформа для сбора, обработки и аналитики контента
+Telegram-каналов:
 
-**snscrape → Bronze (Parquet) → Silver (DuckDB) → ML enrichment (Hugging Face)
-→ Gold marts → Apache Superset** — fully orchestrated by **Apache Airflow**,
-with **Great Expectations** quality gates between layers and verified backups.
+**snscrape → Bronze (Parquet) → Silver (DuckDB) → ML-обогащение (Hugging Face)
+→ витрины Gold → Apache Superset** — полная оркестрация **Apache Airflow**,
+гейты качества **Great Expectations** между слоями и бэкапы с проверкой
+восстановления.
 
-> Built spec-first: the complete requirement specification lives in
-> [openspec.md](openspec.md) (8 phases, Definition of Done). Every phase was
-> implemented and verified against it — see [OPERATIONS.md](OPERATIONS.md)
-> for the runbook.
+> Проект построен по спецификации: полное ТЗ живёт в
+> [openspec.md](openspec.md) (8 фаз, Definition of Done). Каждая фаза
+> реализована и проверена на соответствие — эксплуатационный runbook в
+> [OPERATIONS.md](OPERATIONS.md).
 
-## Architecture
+## Архитектура
 
 ```mermaid
 flowchart LR
-    REG["config/channels.csv"] --> ING["telegram_backfill / telegram_ingestion<br/>(snscrape, public t.me preview)"]
-    ING --> BR["Bronze — Parquet partitions<br/>append-only, atomic writes"]
-    BR --> NORM["telegram_normalization<br/>dedup + link extraction"]
+    REG["config/channels.csv"] --> ING["telegram_backfill / telegram_ingestion<br/>(snscrape, публичный предпросмотр t.me)"]
+    ING --> BR["Bronze — Parquet-партиции<br/>append-only, атомарная запись"]
+    BR --> NORM["telegram_normalization<br/>дедуп + извлечение ссылок"]
     NORM --> SIL["Silver — DuckDB<br/>channels / messages / message_links"]
-    SIL --> ML["telegram_enrichment<br/>3 pinned HF models (CPU)"]
-    ML --> META["message_meta<br/>scores + model versions"]
+    SIL --> ML["telegram_enrichment<br/>3 модели HF с закреплёнными ревизиями (CPU)"]
+    ML --> META["message_meta<br/>оценки + версии моделей"]
     SIL --> MARTS["telegram_analytics_marts"]
     META --> MARTS
-    MARTS --> GOLD["Gold — 8 marts"]
-    GOLD --> SS["Superset (read-only)<br/>6 dashboards"]
-    Q["telegram_quality<br/>Great Expectations"] -. gates .-> NORM
-    Q -. gates .-> ML
-    Q -. gates .-> MARTS
-    REC["telegram_reconciliation<br/>gap detection"] -.-> ING
-    BAK["tdp_backup<br/>snapshot + restore check"] -.-> BR
+    MARTS --> GOLD["Gold — 8 витрин"]
+    GOLD --> SS["Superset (read-only)<br/>6 дашбордов"]
+    Q["telegram_quality<br/>Great Expectations"] -. гейты .-> NORM
+    Q -. гейты .-> ML
+    Q -. гейты .-> MARTS
+    REC["telegram_reconciliation<br/>поиск пробелов"] -.-> ING
+    BAK["tdp_backup<br/>снапшот + проверка восстановления"] -.-> BR
 ```
 
-## Highlights
+## Ключевые решения
 
-- **Idempotent everywhere.** Deterministic keys (`sha256(source, channel_id,
-  message_id)`), append-only Bronze with atomic renames, upsert-style
-  publication in single transactions — re-running any DAG never duplicates
-  or loses data.
-- **One writer.** DuckDB is used as an embedded analytical store; all writes
-  go through one controlled publisher per DAG, staging DataFrames never
-  travel through XCom, and Superset connects strictly in
-  `access_mode=read_only` (coexists with the writer).
-- **Reproducible ML.** Three `rubert-tiny` models pinned to exact Hugging
-  Face commit SHAs, sigmoid heads per model card (not softmax), versioned
-  thresholds, `input_hash` invalidation — a text edit triggers re-enrichment,
-  results carry full model provenance.
-- **Quality gates.** Great Expectations suites for Bronze/Silver/Gold with
-  PASS/WARN/FAIL; critical failures fail the Airflow task and block
-  downstream; full history lands in `quality_results`.
-- **Verified backups.** Daily consistent DuckDB snapshot (ATTACH read-only,
-  not a raw file copy) + pg_dump of Superset metadata, with restore
-  verification built into the backup itself.
-- **Reproducible environment.** Python deps managed by **uv** (`uv.lock` is
-  the single source of truth — same lock builds the Docker image), torch
-  installed CPU-only (no unused ~1.5 GB CUDA stack).
+- **Идемпотентность везде.** Детерминированные ключи (`sha256(source,
+  channel_id, message_id)`), append-only Bronze с атомарными переименованиями,
+  upsert-публикация в одиночных транзакциях — повторный запуск любого DAG-а
+  не дублирует и не теряет данные.
+- **Один писатель.** DuckDB используется как встроенное аналитическое
+  хранилище; все записи идут через одного контролируемого издателя на DAG,
+  DataFrame не передаются через XCom, а Superset подключён строго в
+  `access_mode=read_only` (сосуществует с писателем).
+- **Воспроизводимый ML.** Три модели `rubert-tiny` закреплены на точных
+  commit SHA Hugging Face, sigmoid-головки по карточкам моделей (не softmax),
+  версионируемые пороги, инвалидация по `input_hash` — правка текста
+  перезапускает обогащение, результаты несут полный провенанс модели.
+- **Гейты качества.** Наборы Great Expectations для Bronze/Silver/Gold с
+  уровнями PASS/WARN/FAIL; критические сбои роняют задачу Airflow и
+  блокируют downstream; полная история — в `quality_results`.
+- **Проверяемые бэкапы.** Ежедневный согласованный снапшот DuckDB
+  (ATTACH read-only, не сырая копия файла) + pg_dump метаданных Superset,
+  с проверкой восстановления внутри самого бэкапа.
+- **Воспроизводимое окружение.** Зависимости Python управляются **uv**
+  (`uv.lock` — единый источник истины, тот же лок собирает Docker-образ),
+  torch ставится CPU-only (без ~1.5 ГБ неиспользуемого CUDA-стека).
 
-## Airflow DAGs
+## DAG-и Airflow
 
-| DAG | Schedule | Purpose |
+| DAG | Расписание | Назначение |
 |---|---|---|
-| `telegram_backfill` | manual | Initial history load for channels from the registry |
-| `telegram_ingestion` | hourly | Incremental collection with overlap window and per-channel cursors |
-| `telegram_normalization` | hourly | Bronze → Silver: dedup, URL extraction & classification |
-| `telegram_enrichment` | hourly | Toxicity / sentiment / emotion inference, `message_meta` |
-| `telegram_analytics_marts` | hourly | Rebuild 8 Gold marts + gold-level quality gates |
-| `telegram_quality` | hourly | GX checks over Bronze/Silver (PASS/WARN/FAIL, history) |
-| `telegram_reconciliation` | daily 04:00 | Re-collect recent window, detect gaps |
-| `tdp_backup` | daily | Warehouse snapshot + Superset metadata dump, restore check |
+| `telegram_backfill` | вручную | Первичная загрузка истории каналов из реестра |
+| `telegram_ingestion` | ежечасно | Инкрементальный сбор с перекрытием и курсорами по каналам |
+| `telegram_normalization` | ежечасно | Bronze → Silver: дедуп, извлечение и классификация URL |
+| `telegram_enrichment` | ежечасно | Inference toxicity/sentiment/emotion, запись `message_meta` |
+| `telegram_analytics_marts` | ежечасно | Пересборка 8 витрин Gold + gold-проверки |
+| `telegram_quality` | ежечасно | GX-проверки Bronze/Silver (PASS/WARN/FAIL, история) |
+| `telegram_reconciliation` | ежедневно 04:00 | Пересбор свежего окна, поиск пробелов |
+| `tdp_backup` | ежедневно | Снапшот склада + дамп метаданных Superset, проверка восстановления |
 
-Channel errors are isolated per mapped task: one unavailable channel is
-recorded in `collection_state` and never stops the rest.
+Ошибки каналов изолированы на уровне mapped-задач: недоступный канал
+фиксируется в `collection_state` и не останавливает остальные.
 
-## Quick start
+## Быстрый старт
 
-Prerequisites: Docker + Docker Compose v2 (and [uv](https://docs.astral.sh/uv/)
-only for local tests).
+Нужно: Docker + Docker Compose v2 ([uv](https://docs.astral.sh/uv/) — только
+для локальных тестов).
 
 ```bash
-cp .env.example .env          # fill POSTGRES_PASSWORD, AIRFLOW_ADMIN_PASSWORD,
-                              # SUPERSET_ADMIN_PASSWORD (+ optional secret keys)
+cp .env.example .env          # заполнить POSTGRES_PASSWORD, AIRFLOW_ADMIN_PASSWORD,
+                              # SUPERSET_ADMIN_PASSWORD (+ опциональные секретные ключи)
 docker compose build
 docker compose up airflow-init
 docker compose up -d
 ```
 
-- **Airflow UI:** http://localhost:8080 — unpause `telegram_backfill`, run it
-  once; hourly DAGs pick up from there.
-- **Superset:** http://localhost:8088 — six dashboards are provisioned
-  automatically on first start, all reading Gold marts.
+- **Airflow UI:** http://localhost:8080 — разлочить `telegram_backfill` и
+  запустить; часовые DAG-и подхватят работу сами.
+- **Superset:** http://localhost:8088 — шесть дашбордов создаются
+  автоматически при первом старте, все читают витрины Gold.
 
-Add channels by editing `config/channels.csv` (`username,is_active`) and
-running `telegram_backfill`.
+Добавление каналов — дописать в `config/channels.csv`
+(`username,is_active`) и запустить `telegram_backfill`.
 
-## Testing
+## Тесты
 
 ```bash
-uv sync                # full env incl. torch (CPU wheels on Windows/macOS)
-uv run pytest          # 45 fast tests: keys, publication idempotency,
-                       # link extraction, marts granularity, quality gates
-uv run pytest -m slow  # model smoke tests — download pinned revisions on first run
+uv sync                # полное окружение, включая torch (CPU-колёса на Windows/macOS)
+uv run pytest          # 45 быстрых тестов: ключи, идемпотентность публикации,
+                       # извлечение ссылок, гранулярность витрин, гейты качества
+uv run pytest -m slow  # smoke-тесты моделей — при первом запуске скачивают ревизии
 ```
 
-## Project layout
+## Структура проекта
 
 ```
-config/    channel registry (CSV)
-dags/      8 Airflow DAGs (thin; heavy logic lives in src/)
+config/    реестр каналов (CSV)
+dags/      8 DAG-ов Airflow (тонкие; тяжёлая логика — в src/)
 src/
-  warehouse/      DDL, deterministic keys, idempotent publisher
-  ingestion/      snscrape collector, Bronze writer, collection state
-  normalization/  Bronze→Silver transforms, URL extraction/classification
-  enrichment/     model registry, inference adapters, message_meta builder
-  quality/        GX runner, Bronze/Silver suites, gold checks
-  marts/          SQL definitions of 8 Gold marts, pipeline health
-docker/superset/   image, config, bootstrap (connection, datasets, dashboards)
-scripts/           warehouse init, backup/restore, Superset helpers
-tests/             45 unit/integration tests + model smoke tests
-data/              runtime data (gitignored): bronze/, staging/, warehouse/, logs/, backups/
+  warehouse/      DDL, детерминированные ключи, идемпотентный издатель
+  ingestion/      snscrape-коллектор, запись Bronze, состояние сбора
+  normalization/  преобразования Bronze→Silver, извлечение/классификация URL
+  enrichment/     реестр моделей, адаптеры inference, построение message_meta
+  quality/        рантайм GX, наборы Bronze/Silver, gold-проверки
+  marts/          SQL-определения 8 витрин Gold, pipeline health
+docker/superset/   образ, конфиг, bootstrap (подключение, датасеты, дашборды)
+scripts/           инициализация склада, бэкап/восстановление, хелперы Superset
+tests/             45 unit/integration тестов + smoke-тесты моделей
+data/              рантайм-данные (в .gitignore): bronze/, staging/, warehouse/, logs/, backups/
 ```
 
-## Design notes & limitations
+## Особенности и ограничения
 
-- The collection source is Telegram's **public web preview** (`t.me/s/<name>`):
-  no API keys needed, but view/forward counters are unavailable (stored as
-  NULL, never fabricated) and history depth is limited by the web interface.
-- DuckDB is intentionally single-node/single-writer (documented in the spec);
-  the architecture isolates all writes behind the publisher, so swapping in a
-  client-server warehouse later touches only `src/warehouse`.
-- `content_hash` detects identical content but is never used as a primary
-  key; repeated identical posts stay separate messages.
+- Источник сбора — **публичный веб-предпросмотр** Telegram (`t.me/s/<name>`):
+  без API-ключей, но счётчики просмотров/пересылок недоступны (хранятся как
+  NULL, не выдумываются), а глубина истории ограничена веб-интерфейсом.
+- DuckDB намеренно одноузловой и с одним писателем (зафиксировано в
+  спецификации); архитектура изолирует все записи за издателем, поэтому
+  замена на клиент-серверное хранилище затронет только `src/warehouse`.
+- `content_hash` находит одинаковое содержимое, но никогда не используется
+  как первичный ключ; повторяющиеся одинаковые посты остаются отдельными
+  сообщениями.
 
-## License
+## Лицензия
 
 [MIT](LICENSE)

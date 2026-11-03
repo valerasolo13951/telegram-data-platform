@@ -1,8 +1,8 @@
-"""Airflow-facing ingestion tasks (thin, XCom-friendly).
+"""Задачи сбора для Airflow (тонкие, XCom-friendly).
 
-collect_channel_task returns a SMALL dict (status/counters/file path) —
-never a DataFrame. State is written by a single consolidated task to keep
-DuckDB single-writer (spec §3.5).
+collect_channel_task возвращает маленький словарь (статус/счётчики/путь) —
+никогда DataFrame. Состояние пишет одна консолидированная задача, чтобы
+сохранить правило единственного писателя DuckDB (спецификация, §3.5).
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ def _env(name: str, default: str) -> str:
 
 
 def collect_channel_task(username: str, max_messages: int | None, overlap_size: int) -> dict:
-    """Collect one channel into Bronze. Errors are captured, not raised:
-    an error in one channel must not stop the others (spec: критерии успеха)."""
+    """Собрать один канал в Bronze. Ошибки возвращаются, а не бросаются:
+    ошибка одного канала не должна останавливать остальные (критерии успеха)."""
     context = get_current_context()
     run_id = context["run_id"].replace(":", "_").replace("+", "_")
     bronze_root = _env("BRONZE_PATH", "data/bronze/telegram_messages")
@@ -63,7 +63,7 @@ def collect_channel_task(username: str, max_messages: int | None, overlap_size: 
 
 
 def collect_channel_incremental_task(username: str, overlap_size: int) -> dict:
-    """Incremental collection: fetch until last_successful - overlap (inclusive)."""
+    """Инкрементальный сбор: до last_successful - overlap (включительно)."""
     context = get_current_context()
     duckdb_file = _env("DUCKDB_FILE", "data/warehouse/telegram.duckdb")
     import duckdb
@@ -112,7 +112,7 @@ def collect_channel_incremental_task(username: str, overlap_size: int) -> dict:
 
 
 def update_collection_state_task(results: list[dict]) -> dict:
-    """Single-writer task: write all per-channel states in one DuckDB txn."""
+    """Задача-писатель: записать состояния всех каналов в одной транзакции DuckDB."""
     import duckdb
 
     duckdb_file = _env("DUCKDB_FILE", "data/warehouse/telegram.duckdb")
@@ -139,22 +139,22 @@ def update_collection_state_task(results: list[dict]) -> dict:
     summary = {"channels_ok": ok, "channels_failed": failed}
     if failed:
         # visible in the UI, but does not fail the whole run
-        print(f"collection summary: {summary}")
+        print(f"итог сбора: {summary}")
     return summary
 
 
 # ---------- reconciliation ----------
 
 def compare_collected_ids(collected_ids: list[int], silver_ids: set[int]) -> list[int]:
-    """Ids present in the freshly collected window but missing in Silver."""
+    """ID из свежесобранного окна, отсутствующие в Silver."""
     return sorted(set(collected_ids) - silver_ids)
 
 
 def reconcile_channel_task(username: str, window: int) -> dict:
-    """Re-collect the recent window of a channel and compare with Silver.
+    """Пересобрать свежее окно канала и сверить с Silver.
 
-    Freshly collected posts are always written to Bronze (dedup happens in
-    normalization); gaps in Silver within the window are reported.
+    Свежесобранные посты всегда пишутся в Bronze (дедуп — в normalization);
+    пробелы в Silver внутри окна фиксируются в отчёте.
     """
     context = get_current_context()
     run_id = context["run_id"].replace(":", "_").replace("+", "_")
@@ -214,7 +214,7 @@ CREATE TABLE IF NOT EXISTS reconciliation_results (
 
 
 def record_reconciliation_result(results: list[dict]) -> dict:
-    """Persist reconciliation history + advance last_reconciliation_at."""
+    """Сохранить историю сверки и продвинуть last_reconciliation_at."""
     import duckdb
     from datetime import datetime, timezone
 

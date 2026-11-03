@@ -1,4 +1,4 @@
-"""Channel registry: config/channels.csv with columns username,is_active."""
+"""Реестр каналов: config/channels.csv с колонками username,is_active."""
 from __future__ import annotations
 
 import csv
@@ -17,5 +17,5 @@ def load_channel_registry(path: str | Path, active_only: bool = True) -> list[di
                 continue
             rows.append({"username": username, "is_active": is_active})
     if not rows:
-        raise ValueError(f"channel registry is empty: {path}")
+        raise ValueError(f"реестр каналов пуст: {path}")
     return rows

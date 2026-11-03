@@ -1,6 +1,6 @@
-"""Per-channel collection state stored in DuckDB (spec §3.3).
+"""Состояние сбора по каждому каналу в DuckDB (спецификация, §3.3).
 
-State is only advanced after the channel's data has been published to Bronze.
+Курсор продвигается только после успешной публикации данных канала в Bronze.
 """
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ def success_state(channel_id: str, last_seen_message_id: int) -> dict:
 
 def error_state(channel_id: str, status: str, error: str) -> dict:
     if status not in VALID_STATUSES:
-        raise ValueError(f"invalid status {status!r}")
+        raise ValueError(f"недопустимый статус {status!r}")
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     return {
         "channel_id": channel_id,

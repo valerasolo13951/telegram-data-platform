@@ -1,6 +1,6 @@
-"""Initialize Silver schema in the working DuckDB warehouse.
+"""Инициализация схемы Silver в рабочем складе DuckDB.
 
-Usage (inside the airflow image):
+Использование (внутри образа airflow):
     python scripts/init_warehouse.py [--db /opt/airflow/data/warehouse/telegram.duckdb]
 """
 from __future__ import annotations
@@ -31,7 +31,7 @@ def main() -> None:
         version = conn.execute(
             "SELECT value FROM warehouse_meta WHERE key = 'schema_version'"
         ).fetchall()
-        print(f"warehouse initialized: {args.db}, schema_version={version[0][0]} (expected {SCHEMA_VERSION})")
+        print(f"склад инициализирован: {args.db}, schema_version={version[0][0]} (ожидалась {SCHEMA_VERSION})")
     finally:
         conn.close()
 

@@ -1,7 +1,7 @@
-"""Stable key generation for warehouse entities.
+"""Генерация стабильных ключей сущностей склада.
 
-All keys are deterministic: the same logical entity always maps to the same
-key, which makes repeated loads idempotent.
+Все ключи детерминированы: одна логическая сущность всегда даёт один ключ,
+поэтому повторные загрузки идемпотентны.
 """
 from __future__ import annotations
 
@@ -19,18 +19,18 @@ def _digest(*parts: str) -> str:
 
 
 def message_key(source: str, channel_id: str, message_id: int) -> str:
-    """Stable encoding of source, channel_id, message_id."""
+    """Стабильное кодирование source, channel_id, message_id."""
     return _digest(source, str(channel_id), str(message_id))
 
 
 def content_hash(text: str | None) -> str:
-    """Hash of normalized message content (empty text hashes to a constant)."""
+    """Хеш нормализованного содержимого сообщения (пустой текст даёт константу)."""
     normalized = (text or "").strip()
     return _digest(normalized)
 
 
 def link_id(message_key_: str, raw_url: str, position_start: int) -> str:
-    """Stable ID of one link occurrence within a message."""
+    """Стабильный ID одного вхождения ссылки в сообщении."""
     return _digest(message_key_, raw_url, str(position_start))
 
 
@@ -42,7 +42,7 @@ def enrichment_id(
     inference_version: str,
     input_hash: str,
 ) -> str:
-    """Stable ID of one enrichment result (message, task, model, versions, input)."""
+    """Стабильный ID одного результата обогащения (сообщение, задача, модель, версии, вход)."""
     return _digest(
         message_key_, task_name, model_name, model_version, inference_version, input_hash
     )

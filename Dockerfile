@@ -3,13 +3,13 @@ FROM ghcr.io/astral-sh/uv:0.9.17 AS uv
 FROM apache/airflow:2.10.5-python3.11
 
 USER root
-# Runtime deps for snscrape/telegram web scraping
+# Runtime-зависимости для snscrape/веб-скрапинга Telegram
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# uv for reproducible Python dependency management (pyproject.toml + uv.lock)
+# uv для воспроизводимого управления зависимостями Python (pyproject.toml + uv.lock)
 COPY --from=uv /uv /uvx /usr/local/bin/
 
 USER airflow
@@ -18,9 +18,9 @@ USER airflow
 # PyPI index access is enough; no build of the project package itself (package = false).
 COPY pyproject.toml uv.lock /tmp/env/
 WORKDIR /tmp/env
-# CPU-only torch first (the PyPI wheel for linux/amd64 drags in ~1.5 GB of
-# unused CUDA/NVIDIA libraries; inference runs on CPU). Plain torch==<ver>
-# from the lock is then satisfied by the already-installed +cpu build.
+# Сначала CPU-сборка torch (колесо PyPI для linux/amd64 тянет ~1.5 ГБ
+# неиспользуемых CUDA/NVIDIA-библиотек; inference идёт на CPU). Требование
+# torch==<версия> из лока удовлетворяется уже установленной сборкой +cpu.
 # torch/triton/nvidia-* строки вырезаются: torch уже установлен из cpu-индекса,
 # а CUDA-зависимости PyPI-колеса torch для CPU-inference не нужны.
 COPY <<'EOF' /tmp/strip.awk
@@ -38,5 +38,5 @@ RUN TORCH_VER=$(grep -oP '^torch==\K[0-9.]+' <(uv export --frozen --no-dev --no-
     && mv /tmp/requirements2.txt /tmp/requirements.txt \
     && uv pip install --no-cache --python "$(which python)" -r /tmp/requirements.txt
 
-# Project code will be mounted as a volume; nothing else to copy.
+# Код проекта монтируется как volume; больше копировать нечего.
 ENV PYTHONPATH=/opt/airflow/src:${PYTHONPATH}

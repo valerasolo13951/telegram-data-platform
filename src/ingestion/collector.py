@@ -1,9 +1,9 @@
-"""Telegram collector based on snscrape's public web scraper (t.me/s/<name>).
+"""Сборщик Telegram на публичном веб-скрапере snscrape (t.me/s/<name>).
 
-The web interface gives: post url, date, text, outlinks. It does not provide
-message ids (parsed from url), views, forwards or numeric channel ids — those
-fields stay NULL downstream. Channel metadata (title/description) is parsed
-from the channel landing page HTML because snscrape does not expose it.
+Веб-интерфейс отдаёт: url поста, дату, текст, outlinks. Он не даёт
+id сообщений (парсятся из url), просмотров, пересылок и числовых id каналов —
+эти поля остаются NULL. Метаданные канала (title/description) парсятся
+из HTML страницы канала, потому что snscrape их не отдаёт.
 """
 from __future__ import annotations
 
@@ -29,28 +29,28 @@ UA_HEADERS = {
 
 @dataclass
 class ChannelUnavailable(Exception):
-    """Channel does not exist or preview is not available (permanent)."""
+    """Канал не существует или предпросмотр недоступен (постоянная ошибка)."""
 
     username: str
     detail: str = ""
 
     def __str__(self) -> str:
-        return f"channel unavailable: {self.username} {self.detail}"
+        return f"канал недоступен: {self.username} {self.detail}"
 
 
 @dataclass
 class TemporaryCollectError(Exception):
-    """Transient network/source error; retry with backoff."""
+    """Временная сетевая/источниковая ошибка; повторять с задержкой."""
 
     username: str
     detail: str = ""
 
     def __str__(self) -> str:
-        return f"temporary collect error: {self.username} {self.detail}"
+        return f"временная ошибка сбора: {self.username} {self.detail}"
 
 
 def parse_message_id(url: str) -> tuple[str, int] | None:
-    """Extract (username, message_id) from https://t.me/s/<user>/<id>."""
+    """Извлечь (username, message_id) из https://t.me/s/<user>/<id>."""
     m = _POST_URL_RE.match(url)
     if not m:
         return None
@@ -58,7 +58,7 @@ def parse_message_id(url: str) -> tuple[str, int] | None:
 
 
 def fetch_channel_info(username: str, timeout: int = 30) -> dict:
-    """Fetch channel metadata from the landing page; None values when absent."""
+    """Получить метаданные канала со страницы; при отсутствии — NULL."""
     resp = requests.get(f"https://t.me/{username}", headers=UA_HEADERS, timeout=timeout)
     if resp.status_code in (404, 410):
         raise ChannelUnavailable(username, f"status {resp.status_code}")
@@ -85,11 +85,11 @@ def collect_channel(
     stop_at_message_id: int | None = None,
     timeout: int = 30,
 ) -> pl.DataFrame:
-    """Collect posts of a channel via the public web preview.
+    """Собрать посты канала через публичный веб-предпросмотр.
 
-    Posts are yielded newest-first; collection stops after `max_messages`
-    or when reaching `stop_at_message_id` (inclusive) — used both for
-    backfill limits and incremental overlap windows.
+    Посты идут от новых к старым; сбор останавливается после `max_messages`
+    или при достижении `stop_at_message_id` (включительно) — используется
+    и для лимитов backfill, и для окон инкрементального перекрытия.
     """
     scraper = TelegramChannelScraper(username)
     rows: list[dict] = []

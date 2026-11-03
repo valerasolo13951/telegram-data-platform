@@ -12,16 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install uv
+      - name: Установка uv
         uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
           enable-cache: true
 
-      # Fast tests don't import torch (imports are lazy), so skip the ~2 GB
-      # CUDA-enabled torch stack from the lock on Linux. Full ML smoke tests
-      # (`pytest -m slow`) run locally / in the Docker image instead.
-      - name: Sync environment (without torch/triton/nvidia)
+      # Быстрые тесты не импортируют torch (импорты ленивые), поэтому
+      # ~2 ГБ CUDA-стека torch из лока на Linux не ставим. Полные smoke-тесты
+      # моделей (`pytest -m slow`) гоняются локально / в Docker-образе.
+      - name: Синхронизация окружения (без torch/triton/nvidia)
         run: |
           uv sync --frozen \
             --no-install-package torch \
@@ -39,5 +39,5 @@ jobs:
             --no-install-package nvidia-nvjitlink-cu12 \
             --no-install-package nvidia-nvtx-cu12
 
-      - name: Run tests
+      - name: Запуск тестов
         run: uv run --no-sync pytest -q

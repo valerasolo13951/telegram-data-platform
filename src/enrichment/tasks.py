@@ -1,9 +1,9 @@
-"""Airflow-facing enrichment tasks.
+"""Задачи обогащения для Airflow.
 
-Each inference task selects its own work list (fresh query), runs local
-batched inference outside any DB transaction, and writes results to staging
-parquet; a single publisher task loads staging and publishes message_meta
-in one DuckDB connection (single-writer rule, spec §3.5).
+Каждая задача inference сама выбирает список работы (свежий запрос), гоняет
+локальный батчевый inference вне транзакций БД и пишет результат в staging
+parquet; одна задача-издатель загружает staging и публикует message_meta
+через одно соединение DuckDB (правило единственного писателя, спецификация §3.5).
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def _env(name: str, default: str) -> str:
 
 
 def run_inference_task(task_name: str) -> dict:
-    """Select messages, run one model, write staging parquet; small dict out."""
+    """Выбрать сообщения, прогнать одну модель, записать staging-parquet; компактный dict."""
     import duckdb
 
     from . import adapters, meta
@@ -65,7 +65,7 @@ def run_inference_task(task_name: str) -> dict:
 
 
 def publish_meta_task(results: list[dict]) -> dict:
-    """Single-writer publication of message_meta from staging files."""
+    """Публикация message_meta одним писателем из staging-файлов."""
     import duckdb
     import polars as pl
 

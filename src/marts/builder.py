@@ -1,8 +1,8 @@
-"""Mart SQL definitions and builder.
+"""SQL-определения витрин и строитель.
 
-Each mart is rebuilt wholesale (CREATE OR REPLACE) from Silver — витрины
-пересчитываются без повторного сбора. Aggregates use only successful
-enrichment results of the matching model version(s).
+Каждая витрина пересоздаётся целиком (CREATE OR REPLACE) из Silver —
+витрины пересчитываются без повторного сбора. В агрегаты попадают только
+успешные результаты обогащения соответствующих версий моделей.
 """
 from __future__ import annotations
 
@@ -261,7 +261,7 @@ MART_COLUMNS = {
 
 
 def build_marts(conn: DuckDBPyConnection, exclude: set[str] | None = None) -> list[str]:
-    """Rebuild all SQL-defined marts in one connection (single writer)."""
+    """Пересобрать все SQL-витрины в одном соединении (единственный писатель)."""
     built = []
     for name, sql in MART_SQL.items():
         if exclude and name in exclude:

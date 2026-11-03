@@ -1,4 +1,4 @@
-"""Quality runner: GX expectations + custom checks → PASS/WARN/FAIL + history."""
+"""Рантайм проверок: GX-expectations + кастомные проверки → PASS/WARN/FAIL + история."""
 from __future__ import annotations
 
 import json
@@ -65,7 +65,7 @@ def _run_one(check: Check, df: pd.DataFrame, suite_name: str) -> dict:
         unexpected = int(result.result.get("unexpected_count") or 0)
         rows = int(result.result.get("element_count") or len(df))
         error = None if success else (
-            f"{check.name}: {unexpected}/{rows} rows violate {type(check.expectation).__name__}"
+            f"{check.name}: {unexpected}/{rows} строк нарушают {type(check.expectation).__name__}"
         )
         return {
             "result": PASS if success else FAIL,
@@ -80,7 +80,7 @@ def _run_one(check: Check, df: pd.DataFrame, suite_name: str) -> dict:
         "result": PASS if success else (FAIL if check.severity == "fail" else WARN),
         "rows_checked": int(rows),
         "unexpected_count": int(unexpected),
-        "error_message": None if success else (message or f"{check.name}: {unexpected} violations"),
+        "error_message": None if success else (message or f"{check.name}: {unexpected} нарушений"),
     }
 
 
@@ -93,7 +93,7 @@ def run_suite(
     checks: list[Check],
     run_id: str,
 ) -> dict:
-    """Run all checks, persist history, return summary. Raises on FAIL."""
+    """Выполнить все проверки, сохранить историю, вернуть сводку. При FAIL — исключение."""
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     rows = []
     statuses = []

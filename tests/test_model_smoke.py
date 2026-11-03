@@ -1,7 +1,7 @@
-"""Smoke tests of real models on a fixed example set (spec §4).
+"""Smoke-тесты реальных моделей на фиксированном наборе примеров (спецификация §4).
 
-Marked `slow`: download pinned revisions on first run (cached afterwards).
-Run: uv run pytest -m slow
+Помечены `slow`: при первом запуске скачивают закреплённые ревизии (далее кеш).
+Запуск: uv run pytest -m slow
 """
 from __future__ import annotations
 

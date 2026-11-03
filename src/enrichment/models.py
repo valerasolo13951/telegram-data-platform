@@ -48,5 +48,5 @@ MODEL_REGISTRY: dict[str, dict] = {
 
 def get_task_config(task_name: str) -> dict:
     if task_name not in MODEL_REGISTRY:
-        raise KeyError(f"unknown task {task_name!r}; known: {list(MODEL_REGISTRY)}")
+        raise KeyError(f"неизвестная задача {task_name!r}; известны: {list(MODEL_REGISTRY)}")
     return MODEL_REGISTRY[task_name]

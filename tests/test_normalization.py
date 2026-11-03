@@ -1,4 +1,4 @@
-"""Phase 4 tests: link extraction/classification, bronze→silver transform."""
+"""Тесты Phase 4: извлечение/классификация ссылок, преобразование bronze→silver."""
 from __future__ import annotations
 
 import sys

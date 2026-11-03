@@ -1,4 +1,4 @@
-"""Phase 7 tests: mart granularity and aggregates on synthetic Silver data."""
+"""Тесты Phase 7: гранулярность и агрегаты витрин на синтетических данных Silver."""
 from __future__ import annotations
 
 import json

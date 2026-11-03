@@ -1,1 +1,1 @@
-"""ML enrichment: local inference of three Hugging Face models."""
+"""ML-обогащение: локальный inference трёх моделей Hugging Face."""

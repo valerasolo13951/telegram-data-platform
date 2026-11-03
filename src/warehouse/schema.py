@@ -1,7 +1,7 @@
-"""DuckDB DDL for Silver tables.
+"""DDL таблиц Silver в DuckDB.
 
-Schema versions: bump SCHEMA_VERSION and add a migration when changing
-tables incompatibly (spec §11.8).
+Несовместимое изменение таблиц: поднять SCHEMA_VERSION и добавить миграцию
+(общие требования к реализации, п. 8).
 """
 from __future__ import annotations
 

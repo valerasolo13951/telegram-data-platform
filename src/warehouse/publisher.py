@@ -1,8 +1,8 @@
-"""Controlled publication of Silver tables.
+"""Контролируемая публикация таблиц Silver.
 
-Each publish loads a polars DataFrame into a staging relation and upserts it
-inside one transaction. All functions are idempotent: re-publishing the same
-data does not create duplicates.
+Каждая публикация регистрирует polars-DataFrame как staging-отношение и
+вливает его upsert-ом в одной транзакции. Все функции идемпотентны:
+повторная публикация тех же данных не создаёт дубликатов.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ META_COLUMNS = [
 def _check_columns(df: pl.DataFrame, expected: list[str], name: str) -> None:
     missing = set(expected) - set(df.columns)
     if missing:
-        raise ValueError(f"{name}: missing columns {sorted(missing)}")
+        raise ValueError(f"{name}: отсутствуют колонки {sorted(missing)}")
 
 
 def _to_naive_utc(df: pl.DataFrame) -> pl.DataFrame:
@@ -56,7 +56,7 @@ def _ordered(df: pl.DataFrame, expected: list[str]) -> pl.DataFrame:
 
 
 def publish_channels(conn: DuckDBPyConnection, df: pl.DataFrame) -> int:
-    """Upsert channels; first_seen_at/created_at of the existing row win."""
+    """Upsert каналов; существующие first_seen_at/created_at сохраняются."""
     _check_columns(df, CHANNEL_COLUMNS, "channels")
     df = _to_naive_utc(_ordered(df, CHANNEL_COLUMNS))
     conn.register("_stg_channels", df)
@@ -87,7 +87,7 @@ def publish_channels(conn: DuckDBPyConnection, df: pl.DataFrame) -> int:
 
 
 def publish_messages(conn: DuckDBPyConnection, df: pl.DataFrame) -> dict:
-    """Upsert messages; first_collected_at of the existing row is preserved."""
+    """Upsert сообщений; существующий first_collected_at сохраняется."""
     _check_columns(df, MESSAGE_COLUMNS, "messages")
     df = _to_naive_utc(_ordered(df, MESSAGE_COLUMNS))
     conn.register("_stg_messages", df)
@@ -123,7 +123,7 @@ def publish_messages(conn: DuckDBPyConnection, df: pl.DataFrame) -> dict:
 
 
 def publish_message_links(conn: DuckDBPyConnection, df: pl.DataFrame) -> dict:
-    """Replace links of the affected messages (re-extraction is the norm)."""
+    """Заменить ссылки затронутых сообщений (повторное извлечение — норма)."""
     _check_columns(df, LINK_COLUMNS, "message_links")
     df = _to_naive_utc(_ordered(df, LINK_COLUMNS))
     conn.register("_stg_links", df)
@@ -144,7 +144,7 @@ def publish_message_links(conn: DuckDBPyConnection, df: pl.DataFrame) -> dict:
 
 
 def publish_message_meta(conn: DuckDBPyConnection, df: pl.DataFrame) -> dict:
-    """Insert enrichment results; a repeated identical result is a no-op."""
+    """Вставка результатов обогащения; повтор идентичного результата — no-op."""
     _check_columns(df, META_COLUMNS, "message_meta")
     df = _to_naive_utc(_ordered(df, META_COLUMNS))
     conn.register("_stg_meta", df)

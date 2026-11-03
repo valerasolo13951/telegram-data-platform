@@ -1,1 +1,1 @@
-"""Telegram ingestion: snscrape collector, Bronze writer, collection state."""
+"""Сбор Telegram: collector на snscrape, запись Bronze, состояние сбора."""

@@ -1,4 +1,4 @@
-"""Phase 6 tests: quality runner produces PASS/WARN/FAIL and history."""
+"""Тесты Phase 6: рантайм проверок выдаёт PASS/WARN/FAIL и пишет историю."""
 from __future__ import annotations
 
 import sys

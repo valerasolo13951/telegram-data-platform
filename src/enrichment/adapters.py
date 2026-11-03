@@ -1,8 +1,8 @@
-"""Per-model inference adapters (local, CPU, batch).
+"""Адаптеры inference по каждой модели (локально, CPU, батчи).
 
-Each adapter is verified against the model card's recommended usage:
-sigmoid (not softmax) for toxicity/sentiment/emotion, argmax label for
-single-label tasks, per-label thresholds for multilabel emotions.
+Каждый адаптер проверен на рекомендуемом использовании из карточки модели:
+sigmoid (не softmax) для toxicity/sentiment/emotion, метка по argmax для
+однометочных задач, пороги по меткам для multilabel-эмоций.
 
 torch/transformers импортируются лениво (внутри load_model), чтобы
 тесты чистых частей и CI работали без ML-зависимостей.
@@ -18,7 +18,7 @@ _model_cache: dict[str, tuple] = {}
 
 
 def load_model(task_name: str, cache_dir: str | None = None):
-    """Load tokenizer+model at the PINNED revision; cached per process."""
+    """Загрузить токенизатор+модель на ЗАКРЕПЛЁННОЙ ревизии; кеш на процесс."""
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -41,10 +41,10 @@ def load_model(task_name: str, cache_dir: str | None = None):
 
 
 def predict_batch(task_name: str, texts: list[str], batch_size: int = 16) -> list[dict]:
-    """Run inference on non-empty texts.
+    """Прогнать inference по непустым текстам.
 
-    Returns per text: {"scores": {label: prob}, "label": str|None}.
-    All scores are finite floats in [0, 1] (sigmoid outputs).
+    Для каждого текста возвращает {"scores": {label: prob}, "label": str|None}.
+    Все оценки — конечные числа в [0, 1] (выходы sigmoid).
     """
     import torch
 
@@ -56,7 +56,7 @@ def predict_batch(task_name: str, texts: list[str], batch_size: int = 16) -> lis
     expected = set(cfg["classes"])
     if set(model_labels) != expected:
         raise RuntimeError(
-            f"{task_name}: model classes {model_labels} != registry {cfg['classes']}"
+            f"{task_name}: классы модели {model_labels} != реестр {cfg['classes']}"
         )
 
     results: list[dict] = []
@@ -79,7 +79,7 @@ def predict_batch(task_name: str, texts: list[str], batch_size: int = 16) -> lis
 
 
 def _interpret(cfg: dict, scores: dict[str, float]) -> dict:
-    """Apply per-task label rules; all class scores preserved."""
+    """Применить правила меток задачи; все оценки классов сохраняются."""
     if cfg["task_name"] == "sentiment":
         # sigmoid + выбор метки по максимуму (карточка модели), не softmax
         label = max(scores, key=scores.get)
@@ -94,7 +94,7 @@ def _interpret(cfg: dict, scores: dict[str, float]) -> dict:
         hits = [e for e, t in thresholds.items() if scores.get(e, 0.0) >= t]
         label = ",".join(sorted(hits)) if hits else None
         return {"scores": scores, "label": label}
-    raise RuntimeError(f"unknown task config {cfg['task_name']}")
+    raise RuntimeError(f"неизвестная конфигурация задачи {cfg['task_name']}")
 
 
 def sanity_check_scores(scores: dict[str, float]) -> bool:

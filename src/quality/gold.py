@@ -1,4 +1,4 @@
-"""Gold checks: expected schema, grain uniqueness, non-negative counters."""
+"""Gold-проверки: ожидаемая схема, уникальность гранулярности, неотрицательность."""
 from __future__ import annotations
 
 import great_expectations.expectations as gxe
@@ -9,7 +9,7 @@ from .runner import Check, custom_check, gx_check
 def gold_checks(mart_name: str, expected_columns: list[str], grain: list[str]) -> list[Check]:
     def columns_present(df):
         missing = [c for c in expected_columns if c not in df.columns]
-        return max(len(df.columns), 1), len(missing), f"missing columns: {missing}"
+        return max(len(df.columns), 1), len(missing), f"отсутствуют колонки: {missing}"
 
     def dates_in_range(df):
         import pandas as pd
@@ -20,7 +20,7 @@ def gold_checks(mart_name: str, expected_columns: list[str], grain: list[str]) -
         lo = pd.Timestamp("2000-01-01")
         hi = pd.Timestamp.now() + pd.Timedelta(days=2)
         bad = int(((df[col] < lo) | (df[col] > hi)).sum())
-        return len(df), bad, "dates outside allowed range"
+        return len(df), bad, "даты вне допустимого диапазона"
 
     checks = [
         custom_check(f"{mart_name}.columns_present", "fail", columns_present),

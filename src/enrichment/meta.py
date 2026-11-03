@@ -1,4 +1,4 @@
-"""Building message_meta rows from inference results (pure, testable)."""
+"""Построение строк message_meta из результатов inference (чистые функции, тестируемые)."""
 from __future__ import annotations
 
 import json
@@ -18,7 +18,7 @@ def build_meta_rows(
     model_version: str,
     cache_dir_tags: str = "",
 ) -> pl.DataFrame:
-    """One message_meta row per message; empty texts → status=skipped."""
+    """Одна строка message_meta на сообщение; пустые тексты → status=skipped."""
     cfg = get_task_config(task_name)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     rows: list[dict] = []
@@ -43,7 +43,7 @@ def build_meta_rows(
             # явное правило для пустых текстов — не предсказание
             rows.append({**base, "label": None, "scores_json": None,
                          "confidence": None, "status": "skipped",
-                         "error_message": "empty text"})
+                         "error_message": "пустой текст"})
             continue
         rows.append({
             **base,
@@ -77,7 +77,7 @@ META_RESULT_SCHEMA = {
 
 
 def build_failed_rows(task_name: str, messages: pl.DataFrame, error: str) -> pl.DataFrame:
-    """status=failed rows so the failure is observable per message."""
+    """Строки status=failed, чтобы сбой был наблюдаем по каждому сообщению."""
     cfg = get_task_config(task_name)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     rows = []
@@ -108,11 +108,11 @@ def build_failed_rows(task_name: str, messages: pl.DataFrame, error: str) -> pl.
 
 
 def select_messages_for_enrichment(conn, task_name: str, limit: int = 500) -> pl.DataFrame:
-    """Messages whose current text has no result for this task+versions.
+    """Сообщения, чей текущий текст не имеет результата для этой задачи+версий.
 
-    Success rows with the same (message_key, model_version,
-    inference_version, input_hash) make the message done; failed/skipped
-    and stale-text results are re-processed.
+    Успешный результат с теми же (message_key, model_version,
+    inference_version, input_hash) закрывает сообщение; failed/skipped
+    и устаревшие по тексту пересчитываются.
     """
     cfg = get_task_config(task_name)
     rows = conn.execute(

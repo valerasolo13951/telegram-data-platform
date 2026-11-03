@@ -1,4 +1,4 @@
-"""Phase 2 tests: schema, keys, idempotent publication, message updates."""
+"""Тесты Phase 2: схема, ключи, идемпотентная публикация, обновления сообщений."""
 from __future__ import annotations
 
 from datetime import datetime, timezone

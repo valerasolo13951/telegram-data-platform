@@ -1,7 +1,7 @@
-"""Bootstrap Superset: admin, DuckDB connection, datasets, 6 dashboards.
+"""Bootstrap Superset: админ, подключение DuckDB, датасеты, 6 дашбордов.
 
-Runs inside the superset image with an app context (no webserver needed).
-Idempotent: skips objects that already exist.
+Запускается внутри образа superset с контекстом приложения (без webserver).
+Идемпотентен: существующие объекты пропускаются.
 """
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def main() -> None:
             )
             print(f"user {ADMIN_USER} created")
 
-        # --- database (read-only duckdb) ---
+        # --- база данных (duckdb read-only) ---
         database = (
             db.session.query(Database)
             .filter_by(database_name="telegram_warehouse")
@@ -120,7 +120,7 @@ def main() -> None:
         db.session.commit()
         print(f"datasets ready: {len(datasets)}")
 
-        # --- charts + dashboards ---
+        # --- чарты + дашборды ---
         for title, cfg in DASHBOARDS.items():
             existing = db.session.query(Dashboard).filter_by(dashboard_title=title).one_or_none()
             if existing:

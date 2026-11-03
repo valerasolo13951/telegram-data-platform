@@ -1,4 +1,4 @@
-"""Phase 5 tests: meta rows, selection logic, interpretation rules."""
+"""Тесты Phase 5: строки message_meta, логика выборки, правила интерпретации."""
 from __future__ import annotations
 
 import sys
@@ -49,7 +49,7 @@ def test_build_meta_rows_success_and_skipped():
     assert scores["positive"] == 0.9
     # пустой текст — не предсказание
     assert rows["scores_json"][1] is None
-    assert rows["error_message"][1] == "empty text"
+    assert rows["error_message"][1] == "пустой текст"
 
 
 def test_build_meta_rows_versions_filled():

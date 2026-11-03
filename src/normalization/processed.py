@@ -1,4 +1,4 @@
-"""Tracking of processed Bronze files (idempotent re-runs)."""
+"""Учёт обработанных файлов Bronze (безопасные повторные запуски)."""
 from __future__ import annotations
 
 from datetime import datetime, timezone

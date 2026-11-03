@@ -1,4 +1,4 @@
-"""Airflow-facing mart tasks."""
+"""Задачи витрин для Airflow."""
 from __future__ import annotations
 
 import os
@@ -9,7 +9,7 @@ def _env(name: str, default: str) -> str:
 
 
 def refresh_marts_task() -> dict:
-    """Rebuild all Gold marts (single writer), then validate gold checks."""
+    """Пересобрать все витрины Gold (один писатель), затем gold-проверки."""
     import duckdb
 
     from quality.runner import FAIL, run_suite
@@ -44,9 +44,9 @@ def refresh_marts_task() -> dict:
         conn.close()
 
     total_fail = sum(s["fail"] for s in summaries)
-    print(f"marts built: {built}; gold summary: {summaries}")
+    print(f"витрины собраны: {built}; gold-сводка: {summaries}")
     if total_fail:
-        raise RuntimeError(f"gold quality gates failed: {total_fail} FAIL(s)")
+        raise RuntimeError(f"gold-проверки не пройдены: {total_fail} FAIL")
     return {"marts": built, "suites": summaries}
 
 

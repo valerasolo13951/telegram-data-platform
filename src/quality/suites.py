@@ -1,4 +1,4 @@
-"""Check suites for Bronze and Silver layers (spec §7)."""
+"""Наборы проверок для слоёв Bronze и Silver (спецификация, §7)."""
 from __future__ import annotations
 
 import json
@@ -19,10 +19,10 @@ def bronze_checks() -> list[Check]:
         import pandas as pd
 
         bad = int((~df["message_date"].apply(lambda v: pd.isna(v) or hasattr(v, "isoformat"))).sum())
-        return len(df), bad, "message_date has non-datetime values"
+        return len(df), bad, "message_date содержит не-дату"
 
     def file_has_rows(df):
-        return max(len(df), 1), 0 if len(df) > 0 else 1, "bronze partition is empty"
+        return max(len(df), 1), 0 if len(df) > 0 else 1, "bronze-партиция пуста"
 
     return [
         gx_check("bronze.username_not_null", "fail",
@@ -67,13 +67,13 @@ def messages_checks() -> list[Check]:
         for c in counters:
             if c in df.columns:
                 bad += int((df[c].dropna() < 0).sum())
-        return len(df), bad, "negative counters found"
+        return len(df), bad, "найдены отрицательные счётчики"
 
     def no_orphan_channels(df):
         # заполняется вызывающей стороной через channels_ids (см. tasks.py)
         ids = _CHANNEL_IDS
         orphans = int((~df["channel_id"].isin(ids)).sum()) if ids is not None else 0
-        return len(df), orphans, "messages reference unknown channels"
+        return len(df), orphans, "сообщения ссылаются на несуществующие каналы"
 
     def content_hash_present(df):
         bad = int(df["content_hash"].isna().sum())
@@ -136,18 +136,18 @@ def message_meta_checks() -> list[Check]:
                     bad += 1
             except Exception:  # noqa: BLE001
                 bad += 1
-        return len(df), bad, "scores_json invalid or outside [0,1]"
+        return len(df), bad, "scores_json невалиден или вне [0,1]"
 
     def versions_filled_on_success(df):
         ok = df["status"] == "success"
         bad = int((df.loc[ok, ["model_version", "inference_version", "input_hash"]].isna().any(axis=1)).sum())
-        return len(df), bad, "model/inference version missing on success"
+        return len(df), bad, "на success не заполнены версия модели/inference"
 
     def no_result_duplicates(df):
         dup = int(df.duplicated(
             subset=["message_key", "task_name", "model_version", "inference_version", "input_hash"]
         ).sum())
-        return len(df), dup, "logical result key duplicated"
+        return len(df), dup, "дубль логического ключа результата"
 
     return [
         gx_check("meta.enrichment_id_unique", "fail",

@@ -1,9 +1,9 @@
-"""Bronze layer: append-only Parquet storage of raw collection results.
+"""Слой Bronze: append-only хранение сырых результатов сбора в Parquet.
 
-Layout: <root>/channel_id=<username>/collection_date=YYYY-MM-DD/<name>.parquet
-Files are written to a temp name and atomically renamed; published files are
-never modified. Provenance columns (collected_at, run_id, schema_version,
-collector_version) are stamped here.
+Раскладка: <root>/channel_id=<username>/collection_date=YYYY-MM-DD/<name>.parquet
+Файлы пишутся под временным именем и атомарно переименовываются; опубликованные
+файлы не изменяются. Колонки происхождения (collected_at, run_id, версия схемы
+и коллектора) проставляются здесь.
 """
 from __future__ import annotations
 
@@ -28,9 +28,9 @@ def write_bronze_partition(
     run_id: str,
     collected_at=None,
 ) -> Path:
-    """Write one Bronze partition atomically; returns the published file path."""
+    """Атомарно записать одну Bronze-партицию; вернуть путь опубликованного файла."""
     if posts.is_empty():
-        raise ValueError("refusing to write empty bronze partition")
+        raise ValueError("отказ писать пустую bronze-партицию")
     ts = collected_at or now_utc()
     df = posts.with_columns(
         pl.lit(ts).alias("collected_at"),
@@ -52,7 +52,7 @@ def read_bronze_partition(path: str | Path) -> pl.DataFrame:
     df = pl.read_parquet(path)
     missing = set(BRONZE_POST_SCHEMA) - set(df.columns)
     if missing:
-        raise ValueError(f"bronze file {path}: missing columns {sorted(missing)}")
+        raise ValueError(f"файл bronze {path}: отсутствуют колонки {sorted(missing)}")
     return df
 
 
@@ -62,7 +62,7 @@ def write_channel_info_partition(
     run_id: str,
     collected_at=None,
 ) -> Path:
-    """Persist channel metadata alongside message partitions (append-only)."""
+    """Сохранить метаданные канала рядом с партициями сообщений (append-only)."""
     ts = collected_at or now_utc()
     username = info["username"]
     row = pl.DataFrame(
@@ -87,7 +87,7 @@ def write_channel_info_partition(
 
 
 def discover_bronze_files(root: str | Path) -> list[Path]:
-    """All published bronze parquet files (tmp-files are skipped)."""
+    """Все опубликованные parquet-файлы Bronze (временные пропускаются)."""
     root = Path(root)
     if not root.exists():
         return []
@@ -98,7 +98,7 @@ def discover_bronze_files(root: str | Path) -> list[Path]:
 
 
 def discover_channel_info_files(root: str | Path) -> list[Path]:
-    """Latest-first channel metadata files."""
+    """Файлы метаданных каналов, от свежих к старым."""
     root = Path(root)
     if not root.exists():
         return []

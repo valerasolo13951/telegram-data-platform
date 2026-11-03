@@ -1,11 +1,11 @@
-"""mart_pipeline_health_daily: DAG health from Airflow metadata + warehouse counters."""
+"""mart_pipeline_health_daily: здоровье DAG-ов из метаданных Airflow + счётчики склада."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
 
 def build_pipeline_health(conn, lookback_days: int = 7) -> int:
-    """Collect Airflow DAG run stats for the last N days into the mart table."""
+    """Собрать статистику запусков DAG-ов за N дней в таблицу витрины."""
     import polars as pl
     from airflow.models import DagRun
     from airflow.settings import Session
@@ -46,7 +46,7 @@ def build_pipeline_health(conn, lookback_days: int = 7) -> int:
         runs = pl.DataFrame(rows)
         # счётчики сообщений по дням из warehouse
         def _day_counts_sql(sql: str) -> pl.DataFrame:
-            # .df() вместо .arrow(): пустой результат в arrow без схемы падает
+            # .df() вместо .arrow(): пустой arrow-результат без схемы падает
             return pl.from_pandas(conn.execute(sql).df())
 
         enriched = _day_counts_sql(

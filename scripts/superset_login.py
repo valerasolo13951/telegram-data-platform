@@ -1,4 +1,4 @@
-"""Save Superset API token from .env credentials to %LOCALAPPDATA%/Temp."""
+"""Сохранить токен API Superset из учётных данных .env в %LOCALAPPDATA%/Temp."""
 import json
 import os
 import urllib.request
