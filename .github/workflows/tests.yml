@@ -1,0 +1,43 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      # Fast tests don't import torch (imports are lazy), so skip the ~2 GB
+      # CUDA-enabled torch stack from the lock on Linux. Full ML smoke tests
+      # (`pytest -m slow`) run locally / in the Docker image instead.
+      - name: Sync environment (without torch/triton/nvidia)
+        run: |
+          uv sync --frozen \
+            --no-install-package torch \
+            --no-install-package triton \
+            --no-install-package nvidia-cublas-cu12 \
+            --no-install-package nvidia-cuda-cupti-cu12 \
+            --no-install-package nvidia-cuda-nvrtc-cu12 \
+            --no-install-package nvidia-cuda-runtime-cu12 \
+            --no-install-package nvidia-cudnn-cu12 \
+            --no-install-package nvidia-cufft-cu12 \
+            --no-install-package nvidia-curand-cu12 \
+            --no-install-package nvidia-cusolver-cu12 \
+            --no-install-package nvidia-cusparse-cu12 \
+            --no-install-package nvidia-nccl-cu12 \
+            --no-install-package nvidia-nvjitlink-cu12 \
+            --no-install-package nvidia-nvtx-cu12
+
+      - name: Run tests
+        run: uv run --no-sync pytest -q

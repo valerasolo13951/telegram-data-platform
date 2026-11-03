@@ -1,0 +1,184 @@
+x-airflow-common: &airflow-common
+  build: .
+  image: telegram-data-platform-airflow
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__CORE__PLUGINS_FOLDER: /opt/airflow/plugins
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY:-}
+    AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "30"
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
+    AIRFLOW__LOGGING__BASE_LOG_FOLDER: /opt/airflow/data/logs
+    AIRFLOW__LOGGING__REMOTE_LOGGING: "False"
+    # Project paths (host-mounted volumes, persistent)
+    DATA_ROOT: /opt/airflow/data
+    BRONZE_PATH: /opt/airflow/data/bronze/telegram_messages
+    STAGING_PATH: /opt/airflow/data/staging
+    WAREHOUSE_PATH: /opt/airflow/data/warehouse
+    DUCKDB_FILE: /opt/airflow/data/warehouse/telegram.duckdb
+    MODELS_PATH: /opt/airflow/data/models
+    # модели Hugging Face качаются один раз в постоянный каталог
+    HF_HOME: /opt/airflow/data/models/cache
+    # Telegram collection settings (defaults; override in .env)
+    TG_COLLECTOR: snscrape
+    TG_MAX_PARALLEL_CHANNELS: ${TG_MAX_PARALLEL_CHANNELS:-4}
+    TG_REQUEST_TIMEOUT: ${TG_REQUEST_TIMEOUT:-30}
+    TG_OVERLAP_SIZE: ${TG_OVERLAP_SIZE:-10}
+    _AIRFLOW_WWW_USER_CREATE: "true"
+    _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USER:-admin}
+    _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:?set AIRFLOW_ADMIN_PASSWORD in .env}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./plugins:/opt/airflow/plugins
+    - ./src:/opt/airflow/src
+    - ./scripts:/opt/airflow/scripts
+    - ./tests:/opt/airflow/tests
+    - ./config:/opt/airflow/config
+    - ./data:/opt/airflow/data
+    - airflow-logs:/opt/airflow/logs
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+  networks:
+    - tdp-net
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow", "-d", "airflow"]
+      interval: 10s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - tdp-net
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /opt/airflow/data/bronze/telegram_messages /opt/airflow/data/staging /opt/airflow/data/warehouse /opt/airflow/data/logs /opt/airflow/data/models /opt/airflow/data/models/cache
+        airflow db migrate
+        exec airflow users create -u "$${_AIRFLOW_WWW_USER_USERNAME}" -p "$${_AIRFLOW_WWW_USER_PASSWORD}" -f Admin -l User -r Admin -e admin@example.org || true
+    restart: on-failure
+
+  # Создание БД метаданных Superset в общем PostgreSQL (после первого init volume)
+  superset-db-init:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    entrypoint: ["bash", "-c"]
+    command:
+      - -c
+      - |
+        until pg_isready -h postgres -U airflow; do sleep 2; done
+        psql -h postgres -U airflow -tc "SELECT 1 FROM pg_database WHERE datname='superset'" | grep -q 1 || \
+        psql -h postgres -U airflow -c "CREATE DATABASE superset"
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tdp-net]
+
+  superset-init:
+    build: docker/superset
+    image: telegram-data-platform-superset
+    environment: &superset-env
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:?set SUPERSET_SECRET_KEY in .env}
+      SUPERSET_DB_URI: postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/superset
+      SUPERSET_DUCKDB_URI: duckdb:////opt/airflow/data/warehouse/telegram.duckdb?access_mode=read_only
+      SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER:-admin}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:?set SUPERSET_ADMIN_PASSWORD in .env}
+    volumes:
+      - ./data:/opt/airflow/data:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - -c
+      - |
+        superset db upgrade
+        python /app/bootstrap_superset.py
+        superset init
+    restart: on-failure
+    depends_on:
+      superset-db-init:
+        condition: service_completed_successfully
+    networks: [tdp-net]
+
+  superset:
+    image: telegram-data-platform-superset
+    environment: *superset-env
+    volumes:
+      - ./data:/opt/airflow/data:ro
+    command:
+      - bash
+      - -c
+      - |
+        gunicorn -b 0.0.0.0:8088 --workers 4 --timeout 120 --limit-request-line 0 'superset.app:create_app()'
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8088/health | grep -q OK || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    ports:
+      - "${SUPERSET_PORT:-8088}:8088"
+    restart: unless-stopped
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    networks: [tdp-net]
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    ports:
+      - "${AIRFLOW_WEBSERVER_PORT:-8080}:8080"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$$(hostname)\""]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+networks:
+  tdp-net:
+
+volumes:
+  postgres-db:
+  airflow-logs:
