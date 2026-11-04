@@ -180,6 +180,24 @@ def main() -> None:
             db.session.commit()
             print(f"dashboard created: {title} ({len(slices)} charts)")
 
+        # --- контрольный прогон метаданных датасетов ---
+        # На чистой установке fetch_metadata внутри цикла создания может
+        # не зафиксировать колонки; повторяем в конце и проверяем результат.
+        for name in sorted(datasets):
+            ds = db.session.query(SqlaTable).filter_by(table_name=name).one_or_none()
+            if ds is None:
+                continue
+            db.session.expire(ds, ["columns"])
+            if ds.columns:
+                continue
+            try:
+                ds.fetch_metadata()
+                db.session.commit()
+                print(f"metadata fixed: {name} ({len(ds.columns)} columns)")
+            except Exception as exc:
+                db.session.rollback()
+                print(f"WARN: {name}: late metadata refresh failed: {repr(exc)[:120]}")
+
 
 def _layout(slices) -> str:
     chart_uuids = {s.id: str(uuid.uuid4()) for s in slices}
