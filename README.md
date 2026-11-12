@@ -153,6 +153,20 @@ docker compose up -d
 выбран последний год, можно задать произвольный диапазон дат — применяется
 ко всем графикам.
 
+### Скриншоты
+
+**Channel Activity** — KPI за период, динамика публикаций по каналам:
+
+![Channel Activity](docs/img/channel-activity.png)
+
+**Toxicity** — категории токсичности по месяцам, средний балл:
+
+![Toxicity](docs/img/toxicity.png)
+
+**External Domains** — топ-10 доменов, динамика внешних ссылок:
+
+![External Domains](docs/img/external-domains.png)
+
 ## Тесты
 
 ```bash
