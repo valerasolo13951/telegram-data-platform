@@ -200,24 +200,32 @@ def main() -> None:
 
 
 def _layout(slices) -> str:
-    chart_uuids = {s.id: str(uuid.uuid4()) for s in slices}
+    """Корректный v2-layout: обязателен корень ROOT_ID, от которого
+    разрешается цепочка parents у GRID/ROW/CHART, иначе фронтенд
+    рендерит бесконечную загрузку."""
     grid = "GRID_ID"
-    rows = []
     position = {
         "DASHBOARD_VERSION_KEY": "v2",
-        grid: {"id": grid, "type": "GRID", "children": [], "parents": ["ROOT_ID"], "meta": {}},
+        "ROOT_ID": {
+            "id": "ROOT_ID", "type": "ROOT",
+            "props": {"background": "BACKGROUND_TEXTURE"},
+        },
+        grid: {
+            "id": grid, "type": "GRID", "children": [],
+            "parents": ["ROOT_ID"], "meta": {},
+        },
     }
     for i, s in enumerate(slices):
         row_id = f"ROW-{i}"
         chart_id = f"CHART-{s.id}"
         position[row_id] = {
-            "id": row_id, "type": "ROW",
-            "children": [chart_id], "parents": ["ROOT_ID", grid], "meta": {},
+            "id": row_id, "type": "ROW", "children": [chart_id],
+            "parents": ["ROOT_ID", grid], "meta": {"background": "BACKGROUND_TRANSPARENT"},
         }
         position[chart_id] = {
             "id": chart_id, "type": "CHART", "children": [],
             "parents": ["ROOT_ID", grid, row_id],
-            "meta": {"chartId": s.id, "width": 12, "uuid": chart_uuids[s.id]},
+            "meta": {"chartId": s.id, "uuid": str(uuid.uuid4()), "width": 12, "height": 50},
         }
         position[grid]["children"].append(row_id)
     return json.dumps(position)
