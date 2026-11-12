@@ -3,10 +3,9 @@
 Запускается внутри образа superset с контекстом приложения (без webserver).
 Идемпотентен: существующие объекты пропускаются.
 
-Каждый дашборд = KPI/график динамики + детальная таблица:
-- линейные графики (echarts_timeseries_line) показывают динамику по месяцам;
-- pie — топ доменов; big_number_total — ключевые цифры;
-- таблицы дают детали по дням.
+Каждый дашборд: KPI → графики динамики (по месяцам) → детальная таблица.
+На всех дашбордах — нативный фильтр периода (по умолчанию «Last 1 year»):
+фильтр управляет всеми чартами, пользователь может задать любые даты.
 """
 from __future__ import annotations
 
@@ -24,6 +23,9 @@ ADMIN_USER = os.environ.get("SUPERSET_ADMIN_USER", "admin")
 ADMIN_PASSWORD = os.environ.get("SUPERSET_ADMIN_PASSWORD", "admin")
 ADMIN_EMAIL = "admin@example.org"
 
+DATE_FORMAT = "%Y-%m-%d"
+DATE_COLUMNS = ("activity_date", "period_start", "period_end")
+
 # ---- переиспользуемые элементы form_data ----
 
 def _metric(col: str, agg: str, label: str, dtype: str = "BIGINT") -> dict:
@@ -40,18 +42,35 @@ def _sql_metric(expr: str, label: str) -> dict:
     return {"expressionType": "SQL", "sqlExpression": expr, "label": label}
 
 
+# время задаётся нативным фильтром дашборда; у чартов по умолчанию последний
+# год. ВАЖНО: для применения периода к запросу нужна легаси-связка
+# granularity_sqla + time_grain_sqla (новый BASE_AXIS-стиль игнорирует
+# time_range на бэкенде), поэтому x_axis не используем.
 LINE_BASE = {
     "viz_type": "echarts_timeseries_line",
-    "x_axis": "activity_date",
+    "granularity_sqla": "activity_date",
     "time_grain_sqla": "P1M",
     "groupby": [],
-    "time_range": "Last 10 years",
+    "time_range": "Last 1 year",
     "row_limit": 10000,
     "zoomable": True,
+    "x_axis_label": "Месяц",
+    "y_axis_label": "Количество",
+}
+BAR_BASE = {
+    "viz_type": "echarts_timeseries_bar",
+    "granularity_sqla": "activity_date",
+    "time_grain_sqla": "P1M",
+    "groupby": [],
+    "time_range": "Last 1 year",
+    "row_limit": 10000,
+    "zoomable": True,
+    "x_axis_label": "Месяц",
+    "y_axis_label": "Сообщений",
 }
 PIE_BASE = {
     "viz_type": "pie",
-    "time_range": "Last 10 years",
+    "time_range": "Last 1 year",
     "donut": True,
     "sort_by_metric": True,
     "labelLine": False,
@@ -59,15 +78,22 @@ PIE_BASE = {
 }
 TABLE_BASE = {
     "viz_type": "table",
+    "granularity_sqla": "activity_date",
     "metrics": [],
     "percent_metrics": [],
     "row_limit": 1000,
-    "time_range": "No filter",
+    "time_range": "Last 1 year",
     "order_desc": True,
+    "column_config": {"activity_date": {"format": DATE_FORMAT}},
 }
 KPI_BASE = {
-    "viz_type": "big_number_total",
-    "time_range": "Last 10 years",
+    # big_number (с трендлайном), а не big_number_total: у total нет
+    # временной колонки, поэтому фильтр периода к нему не применяется
+    "viz_type": "big_number",
+    "granularity_sqla": "activity_date",
+    "time_grain_sqla": "P1M",
+    "time_range": "Last 1 year",
+    "subheader": "за выбранный период",
 }
 
 
@@ -79,10 +105,38 @@ def _line(metrics: list[dict], groupby: list[str] | None = None) -> dict:
     return p
 
 
+def _bar(metrics: list[dict]) -> dict:
+    p = dict(BAR_BASE)
+    p["metrics"] = metrics
+    return p
+
+
 def _table(columns: list[str]) -> dict:
     p = dict(TABLE_BASE)
     p["all_columns"] = columns
     return p
+
+
+def _time_filter() -> dict:
+    """Нативный фильтр периода: по умолчанию последний год,
+    пользователь может задать произвольные даты."""
+    return {
+        "id": "NATIVE_FILTER-time-period",
+        "controlValues": {"defaultToFirstItem": False},
+        "name": "Период публикаций",
+        # ключ плагина фильтра в Superset 5 — нижний регистр; "FILTER_TIME"
+        # (legacy) не зарегистрирован во фронтенде и даёт ошибку фильт-бара
+        "filterType": "filter_time",
+        "targets": [{}],
+        "defaultDataMask": {
+            "extraFormData": {"time_range": "Last 1 year"},
+            "filterState": {"value": "Last 1 year"},
+        },
+        "cascadeParentIds": [],
+        "scope": {"rootPath": ["ROOT_ID"], "excluded": []},
+        "type": "NATIVE_FILTER",
+        "description": "Задайте диапазон дат — фильтр применится ко всем графикам",
+    }
 
 
 DASHBOARDS = {
@@ -98,22 +152,37 @@ DASHBOARDS = {
                 },
             },
             {
-                "name": "Динамика публикаций по месяцам",
-                "width": 8,
+                "name": "Активных каналов за период",
+                "width": 4,
+                "params": {
+                    **KPI_BASE,
+                    "metric": _metric(
+                        "channel_id", "COUNT_DISTINCT", "Активных каналов", "VARCHAR"
+                    ),
+                },
+            },
+            {
+                "name": "Сообщений со ссылками",
+                "width": 4,
+                "params": {
+                    **KPI_BASE,
+                    "metric": _metric("messages_with_links_count", "SUM", "С ссылками"),
+                },
+            },
+            {
+                "name": "Динамика публикаций по месяцам (по каналам)",
+                "width": 12,
                 "params": _line(
                     [_metric("messages_count", "SUM", "Сообщений")],
                     groupby=["channel_id"],
                 ),
             },
             {
-                "name": "Сообщения и ссылки по дням",
+                "name": "Средняя длина текста по месяцам",
                 "width": 12,
-                "params": _line(
-                    [
-                        _metric("messages_count", "SUM", "Сообщений"),
-                        _metric("messages_with_links_count", "SUM", "С ссылками"),
-                    ],
-                ),
+                "params": _line([
+                    _sql_metric("AVG(avg_text_length)", "Средняя длина текста"),
+                ]),
             },
             {
                 "name": "Детали по дням",
@@ -139,6 +208,15 @@ DASHBOARDS = {
                 ]),
             },
             {
+                "name": "Количество сообщений по тональности, по месяцам",
+                "width": 12,
+                "params": _bar([
+                    _metric("negative_count", "SUM", "Негативных"),
+                    _metric("neutral_count", "SUM", "Нейтральных"),
+                    _metric("positive_count", "SUM", "Позитивных"),
+                ]),
+            },
+            {
                 "name": "Детали по дням и каналам",
                 "width": 12,
                 "params": _table([
@@ -155,7 +233,7 @@ DASHBOARDS = {
             {
                 "name": "Категории токсичности по месяцам",
                 "width": 12,
-                "params": _line([
+                "params": _bar([
                     _metric("insult_count", "SUM", "Оскорбления"),
                     _metric("obscenity_count", "SUM", "Обсценная лексика"),
                     _metric("threat_count", "SUM", "Угрозы"),
@@ -163,7 +241,7 @@ DASHBOARDS = {
                 ]),
             },
             {
-                "name": "Средний уровень insult по месяцам",
+                "name": "Средний балл токсичности по месяцам",
                 "width": 12,
                 "params": _line([
                     _sql_metric("AVG(avg_insult_score) * 100", "Insult, балл ×100"),
@@ -187,7 +265,7 @@ DASHBOARDS = {
             {
                 "name": "Эмоции публикаций по месяцам",
                 "width": 12,
-                "params": _line([
+                "params": _bar([
                     _metric("joy_count", "SUM", "Радость"),
                     _metric("sadness_count", "SUM", "Грусть"),
                     _metric("surprise_count", "SUM", "Удивление"),
@@ -270,6 +348,23 @@ DASHBOARDS = {
 }
 
 
+def _json_metadata(slices) -> str:
+    meta = {
+        "color_scheme": "supersetColors",
+        # ВАЖНО: chart_configuration должен быть ПУСТЫМ словарём — записи
+        # {id, slice_id} без обязательных полей ломают гидрацию дашборда
+        # (бесконечный Loading).
+        "chart_configuration": {},
+        "default_filters": "{}",
+        "expanded_slices": {},
+        "label_colors": {},
+        "native_filter_configuration": [_time_filter()],
+        "refresh_frequency": 0,
+        "timed_refresh_immune_slices": [],
+    }
+    return json.dumps(meta)
+
+
 def main() -> None:
     from superset.app import create_app
 
@@ -277,7 +372,7 @@ def main() -> None:
     with app.app_context():
         # импорты моделей требуют контекста приложения
         from superset import db
-        from superset.connectors.sqla.models import SqlaTable
+        from superset.connectors.sqla.models import SqlaTable, TableColumn
         from superset.models.core import Database
         from superset.models.dashboard import Dashboard
         from superset.models.slice import Slice
@@ -317,6 +412,11 @@ def main() -> None:
             try:
                 ds.fetch_metadata()
                 db.session.commit()
+                # формат даты: иначе temporal-колонки рисуются с 00:00:00
+                for col in ds.columns:
+                    if col.column_name in DATE_COLUMNS and (col.type or "").startswith("DATE"):
+                        col.python_date_format = DATE_FORMAT
+                db.session.commit()
             except Exception as exc:
                 print(f"WARN: {name}: metadata refresh failed: {repr(exc)[:120]}")
                 db.session.rollback()
@@ -355,7 +455,7 @@ def main() -> None:
                 "default_filters": "{}",
                 "expanded_slices": {},
                 "label_colors": {},
-                "native_filter_configuration": [],
+                "native_filter_configuration": [_time_filter()],
                 "refresh_frequency": 0,
                 "timed_refresh_immune_slices": [],
             }
