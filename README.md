@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.11-blue)](https://www.python.org/)
 [![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.10-017CEE?logo=apacheairflow)](https://airflow.apache.org/)
 [![DuckDB](https://img.shields.io/badge/warehouse-DuckDB-FFF100?logo=duckdb)](https://duckdb.org/)
-[![tests](https://img.shields.io/badge/тесты-45%20passed-brightgreen)](.github/workflows/tests.yml)
+[![tests](https://github.com/valerasolo13951/telegram-data-platform/actions/workflows/tests.yml/badge.svg)](https://github.com/valerasolo13951/telegram-data-platform/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ## О проекте
