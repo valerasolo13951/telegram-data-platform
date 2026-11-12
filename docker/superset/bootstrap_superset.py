@@ -84,7 +84,7 @@ TABLE_BASE = {
     "row_limit": 1000,
     "time_range": "Last 1 year",
     "order_desc": True,
-    "column_config": {"activity_date": {"format": DATE_FORMAT}},
+    "column_config": {"activity_date_str": {"format": DATE_FORMAT}},
 }
 KPI_BASE = {
     # big_number (с трендлайном), а не big_number_total: у total нет
@@ -113,7 +113,9 @@ def _bar(metrics: list[dict]) -> dict:
 
 def _table(columns: list[str]) -> dict:
     p = dict(TABLE_BASE)
-    p["all_columns"] = columns
+    # в таблицах показываем текстовую колонку даты: raw-records таблицы
+    # игнорируют формат temporal-колонок и рисуют 00:00:00
+    p["all_columns"] = ["activity_date_str" if c == "activity_date" else c for c in columns]
     return p
 
 
@@ -420,6 +422,15 @@ def main() -> None:
                 for col in ds.columns:
                     if col.column_name in DATE_COLUMNS and (col.type or "").startswith("DATE"):
                         col.python_date_format = DATE_FORMAT
+                # текстовая колонка даты для таблиц (raw records в таблицах
+                # игнорирует формат temporal-колонок и рисует 00:00:00)
+                if not any(c.column_name == "activity_date_str" for c in ds.columns):
+                    ds.columns.append(TableColumn(
+                        column_name="activity_date_str",
+                        expression="CAST(activity_date AS VARCHAR)",
+                        type="VARCHAR", is_dttm=False, groupby=True, filterable=True,
+                        verbose_name="Дата (текст)",
+                    ))
                 db.session.commit()
             except Exception as exc:
                 print(f"WARN: {name}: metadata refresh failed: {repr(exc)[:120]}")
