@@ -1,8 +1,8 @@
-# OpenSpec: Telegram Data Platform
+# Telegram Data Platform — техническое задание и спецификация
 
-## 2. `proposal.md`
+## 2. Предложение (proposal)
 
-### Change: telegram-data-platform
+### Проект: telegram-data-platform
 
 #### Цель
 
@@ -51,7 +51,7 @@
 
 ---
 
-## 3. `design.md`
+## 3. Архитектура (design)
 
 ### 3.1. Архитектура
 
@@ -177,7 +177,7 @@ DuckDB используется как аналитическое хранили
 
 ---
 
-## 4. Спецификация `data-model/spec.md`
+## 4. Спецификация модели данных
 
 ### Requirement: Channels
 
@@ -341,7 +341,7 @@ DuckDB используется как аналитическое хранили
 
 ---
 
-## 5. Спецификация `telegram-ingestion/spec.md`
+## 5. Спецификация сбора данных
 
 ### Requirement: Initial backfill
 
@@ -381,7 +381,7 @@ DuckDB используется как аналитическое хранили
 
 ---
 
-## 6. Спецификация `orchestration/spec.md`
+## 6. Спецификация оркестрации
 
 ### DAG 1: `telegram_backfill`
 
@@ -502,7 +502,7 @@ DuckDB используется как аналитическое хранили
 
 ---
 
-## 7. Спецификация `data-quality/spec.md`
+## 7. Спецификация качества данных
 
 Great Expectations должен использоваться для проверки Bronze, Silver и Gold.
 
@@ -595,7 +595,7 @@ Great Expectations отвечает за качество данных; Airflow 
 
 ---
 
-## 8. Спецификация `analytics-marts/spec.md`
+## 8. Спецификация аналитических витрин
 
 ### `mart_channel_activity_daily`
 
@@ -768,7 +768,7 @@ Superset должен подключаться к DuckDB через провер
 
 ---
 
-## 10. `tasks.md`
+## 10. План работ
 
 ### Phase 1. Infrastructure
 
@@ -863,7 +863,7 @@ Superset должен подключаться к DuckDB через провер
 
 ---
 
-## 11. Общие требования к реализации coding agent
+## 11. Требования к реализации
 
 1. До написания кода прочитать все спецификации.
 2. Не реализовывать все компоненты одним большим скриптом.
