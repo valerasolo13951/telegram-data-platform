@@ -37,3 +37,6 @@ package = false
 [tool.pytest.ini_options]
 markers = ["slow: model smoke tests (download models on first run)"]
 addopts = "-m 'not slow'"
+# собираем только tests/: в dags/ лежат DAG-и с import airflow,
+# которого нет в тестовом окружении
+testpaths = ["tests"]
