@@ -146,6 +146,7 @@ DASHBOARDS = {
             {
                 "name": "Всего сообщений",
                 "width": 4,
+                "height": 24,
                 "params": {
                     **KPI_BASE,
                     "metric": _metric("messages_count", "SUM", "Сообщений"),
@@ -154,6 +155,7 @@ DASHBOARDS = {
             {
                 "name": "Активных каналов за период",
                 "width": 4,
+                "height": 24,
                 "params": {
                     **KPI_BASE,
                     "metric": _metric(
@@ -164,6 +166,7 @@ DASHBOARDS = {
             {
                 "name": "Сообщений со ссылками",
                 "width": 4,
+                "height": 24,
                 "params": {
                     **KPI_BASE,
                     "metric": _metric("messages_with_links_count", "SUM", "С ссылками"),
@@ -322,6 +325,7 @@ DASHBOARDS = {
             {
                 "name": "Неуспешных запусков",
                 "width": 4,
+                "height": 24,
                 "params": {
                     **KPI_BASE,
                     "metric": _metric("failed_count", "SUM", "Fail-запусков"),
@@ -531,7 +535,7 @@ def _layout(slices, chart_cfgs) -> str:
                     # чарты с layout по нему, иначе чарты не стартуют
                     "uuid": str(slices[i].uuid),
                     "width": chart_cfgs[i].get("width", 12),
-                    "height": 50,
+                    "height": chart_cfgs[i].get("height", 50),
                 },
             }
         position[grid]["children"].append(row_id)
