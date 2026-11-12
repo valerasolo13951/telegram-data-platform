@@ -207,7 +207,7 @@ def _layout(slices) -> str:
     position = {
         "DASHBOARD_VERSION_KEY": "v2",
         "ROOT_ID": {
-            "id": "ROOT_ID", "type": "ROOT",
+            "id": "ROOT_ID", "type": "ROOT", "children": ["GRID_ID"],
             "props": {"background": "BACKGROUND_TEXTURE"},
         },
         grid: {
